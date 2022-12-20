@@ -109,23 +109,34 @@ function rz_wwww_order_status_shipped_callback($order_id)
 // FIXME: This is not a proper way to call the function, why should I call it directly here????
 rz_add_actions_metabox(0);
 function rz_add_actions_metabox ( $order ) {
+
+	// FIXME: This should be fixed, because adding metaboxes to all post types is making errors in other post types.
 	// if( !$order->has_status('processing')) return false;
 
-	add_action( 'post.php', 'rz_order_tracking_metabox_setup' );
-	add_action( 'load-post.php', 'rz_order_tracking_metabox_setup' );
-	add_action( 'load-post-new.php', 'rz_order_tracking_metabox_setup' );
+	add_action( 'post.php', 'rz_metabox_setup' );
+	add_action( 'load-post.php', 'rz_metabox_setup' );
+	add_action( 'load-post-new.php', 'rz_metabox_setup' );
 }
 /* Meta box setup function. */
-function rz_order_tracking_metabox_setup() {
+function rz_metabox_setup() {
+	// if( !is_product() ) return false;
 
 	/* Add meta boxes on the 'add_meta_boxes' hook. */
-	add_action( 'add_meta_boxes', 'rz_order_tracking_metabox_add' );
+	add_action( 'add_meta_boxes', 'rz_metabox_add',10, 2 );
 
 	/* Save post meta on the 'save_post' hook. */
-	add_action( 'save_post', 'rz_order_tracking_meta_save', 10, 2 );
+	add_action( 'save_post', 'rz_meta_save', 10, 2 );
 }
 /* Create one or more meta boxes to be displayed on the post editor screen. */
-function rz_order_tracking_metabox_add() {
+function rz_metabox_add($post_type, $post) {
+
+	// Get order object
+	$order = new WC_Order($post->ID);
+
+	$shipment_tracking = get_post_meta( $order->ID, RZ_META_KEY_ITEM, true);
+
+	if( !$order->has_status('processing') && !$order->has_status('on-hold') && !$order->has_status('shippeddd') && empty($shipment_tracking) )
+		return;
 
 	add_meta_box(
 		'simple-shipment-tracking-class',      // Unique ID
@@ -139,34 +150,33 @@ function rz_order_tracking_metabox_add() {
 /* Display the post meta box. */
 function rz_order_tracking_metabox_post( $post ) {
 	$shipment_tracking = get_post_meta( $post->ID, RZ_META_KEY_ITEM, true);
-?>
-	<?php wp_nonce_field( basename( __FILE__ ), 'rz_simple_shipment_sot_nonce' ); ?>
- 
-	<p>
-		<label for="tracking_provider"><?php _e( "Provider Name:", 'wc-simple-shipment-tracking' ); ?></label>
-		<br />
-		<input class="widefat" type="text" name="tracking_provider" id="tracking_provider" value="<?php if(isset($shipment_tracking['tracking_provider'])) echo esc_attr( $shipment_tracking['tracking_provider'] ); ?>" size="30" />
-	</p>
-	<p>
-		<label for="tracking_number"><?php _e( "Tracking Number:", 'wc-simple-shipment-tracking' ); ?></label>
-		<br />
-		<input class="widefat" type="text" name="tracking_number" id="tracking_number" value="<?php if(isset($shipment_tracking['tracking_number'])) echo esc_attr( $shipment_tracking['tracking_number'] ); ?>" size="30" />
-	</p>
-	<p>
-		<label for="tracking_link"><?php _e( "Tracking Link:", 'wc-simple-shipment-tracking' ); ?></label>
-		<br />
-		<input class="widefat" type="text" name="tracking_link" id="tracking_link" placeholder="https://xyz.com/?trackingNum=%s" value="<?php if(isset($shipment_tracking['tracking_link'])) echo esc_attr( $shipment_tracking['tracking_link'] ); ?>" size="30" />
-		<span class="components-form-token-field__help">Use %s for tracking number's place in link!</span>
-	</p>
-	<p>
-		<label for="date_shipped"><?php _e( "Date Shipped:", 'wc-simple-shipment-tracking' ); ?></label>
-		<br />
-		<input class="widefat" type="date" name="date_shipped" id="date_shipped" value="<?php if(isset($shipment_tracking['date_shipped'])) echo esc_attr( $shipment_tracking['date_shipped'] ); ?>" size="30" />
-	</p>
-<?php
+
+	echo "<div id='woocommerce-shipment-tracking'>";
+	
+	// Get order object
+	$order = new WC_Order($post->ID);
+
+	// Get order metadata
+	$shipment_tracking_items = rz_get_post_metashipments_formatted($post->ID, '<a target="_blank" href="%s">%s</a>', '%s', 'F j, Y');
+
+	// Shipment metadata is editable
+	$editable = false;
+
+	if( $order->has_status(array('processing', 'on-hold', 'shippeddd') ) )
+		$editable = true;
+
+	rz_print_shipment_list( $shipment_tracking_items, $editable );
+
+	// Show metabox inputs if order status was in processing, on-hold or shippeddd
+	if( $order->has_status( array('on-hold', 'processing', 'shippeddd') ) ) {
+		$shipment_email_sent = get_post_meta( $post->ID, RZ_META_KEY_EMAIL_SENT, true);
+		rz_print_shipment_metabox($shipment_email_sent);
+	}
+
+	echo '</div>';
 }
 /* Save the meta box's post metadata. */
-function rz_order_tracking_meta_save( $post_id, $post ) {
+function rz_meta_save( $post_id, $post ) {
 
 	/* Verify the nonce before proceeding. */
 	if ( !isset( $_POST['rz_simple_shipment_sot_nonce'] ) || !wp_verify_nonce( $_POST['rz_simple_shipment_sot_nonce'], basename( __FILE__ ) ) )
@@ -174,7 +184,6 @@ function rz_order_tracking_meta_save( $post_id, $post ) {
 
 	/* Get the post type object. */
 	$post_type = get_post_type_object( $post->post_type );
-
 	/* Check if the current user has permission to edit the post. */
 	if ( !current_user_can( $post_type->cap->edit_post, $post_id ) )
 		return $post_id;
@@ -187,20 +196,7 @@ function rz_order_tracking_meta_save( $post_id, $post ) {
 		'date_shipped' =>			( isset( $_POST['date_shipped'] ) ? sanitize_html_class( $_POST['date_shipped'] ) : '' )
 	);
 
-	/* Get the meta value of the custom field key. */
-	$meta_value = get_post_meta( $post_id, RZ_META_KEY_ITEM, true );
-
-	/* If a new meta value was added and there was no previous value, add it. */
-	if ( $new_meta_value['tracking_number'] && $meta_value == '' )
-		add_post_meta( $post_id, RZ_META_KEY_ITEM, $new_meta_value, true );
-
-	/* If the new meta value does not match the old value, update it. */
-	elseif ( $new_meta_value['tracking_number'] && $new_meta_value['tracking_number'] != $meta_value['tracking_number'] )
-		update_post_meta( $post_id, RZ_META_KEY_ITEM, $new_meta_value );
-
-	/* If there is no new meta value but an old value exists, delete it. */
-	elseif ( '' == $new_meta_value['tracking_number'] && $meta_value!='' )
-		delete_post_meta( $post_id, RZ_META_KEY_ITEM, $meta_value );
+	add_post_meta( $post_id, RZ_META_KEY_ITEM, $new_meta_value, false );
 }
 
 // Registering a Custom WooCommerce Email
@@ -225,5 +221,177 @@ function rz_status_custom_notification( $order_id, $from_status, $to_status, $or
 		// Sending the customized email
 		$email_notifications['wc-shippeddd']->trigger( $order_id );
 	}
+
+}
+
+
+/**
+ * ORDER LIST COLUMN in >> Admin Panel <<
+ * Add 'Shipment Tracking' column to order list
+ */
+// Column header (after Total column)
+add_filter( 'manage_edit-shop_order_columns', 'rz_shipment_tracking_column_header' );
+function rz_shipment_tracking_column_header( $columns ) {
+	$new_columns = array();
+	foreach ($columns as $column_name => $column_info) {
+		 $new_columns[$column_name] = $column_info;
+		 if ('order_total' === $column_name) {
+			  $new_columns['shipment_tracking'] = __('Shipment Tracking', 'wc-simple-shipment-tracking');
+		 }
+	}
+	return $new_columns;
+}
+// Column content
+add_action( 'manage_shop_order_posts_custom_column', 'rz_shipment_tracking_column_content' );
+function rz_shipment_tracking_column_content( $column ) {
+	global $post;
+	// TODO: write a function to filter out metabox data, date format, tracking link, tracking number linked...
+	// TODO: check errors if one of the data not available, like date_shipped or tracking_link, because these are not required to add!
+	if ( 'shipment_tracking' === $column ) {
+		
+		$shipment_tracking_arr = get_post_meta($post->ID, RZ_META_KEY_ITEM, true);
+		$shipment_tracking_arr = rz_get_post_metashipments_formatted($post->ID, '<a target="_blank" href="%s">%s</a>');
+
+		foreach( $shipment_tracking_arr as &$sh ) {
+			printf( '<b>%s</b> : %s<br>', $sh['tracking_provider'], $sh['tracking_number_linked'] );
+		}
+	}
+}
+
+
+
+// Tracking info in >> Frontend <<
+// Add column to "My Account" > "Orders" table after "Order Total" column
+
+add_filter( 'woocommerce_my_account_my_orders_columns', 'rz_add_tracking_to_my_account_orders' );
+function rz_add_tracking_to_my_account_orders( $columns ) {
+	$new_columns = array();
+	foreach ($columns as $column_name => $column_info) {
+		 $new_columns[$column_name] = $column_info;
+		 if ('order-total' === $column_name) {
+			  $new_columns['shipment_tracking'] = __('Shipment Tracking', 'wc-simple-shipment-tracking');
+		 }
+	}
+	return $new_columns;
+}
+
+// Add tracking info to "My Account" > "Orders" table
+add_action( 'woocommerce_my_account_my_orders_column_shipment_tracking', 'rz_add_tracking_to_my_account_orders_table' );
+
+function rz_add_tracking_to_my_account_orders_table( $order ) {
+
+	$shipment_tracking_arr = rz_get_post_metashipments_formatted($order->get_id(), '<a target="_blank" href="%s">%s</a>');
+
+	foreach( $shipment_tracking_arr as &$sh ) {
+		printf( '<b>%s</b> : %s<br>', $sh['tracking_provider'], $sh['tracking_number_linked'] );
+	}
+}
+
+
+// Show tracking data in "My Account" > "View Order" detail page
+add_action('woocommerce_view_order', 'rz_add_tracking_to_my_account_order_view');
+function rz_add_tracking_to_my_account_order_view( $order_id ) {
+
+	$shipment_tracking_arr = rz_get_post_metashipments_formatted($order_id, '<a target="_blank" href="%s">%s</a>');
+
+	foreach( $shipment_tracking_arr as &$sh ) {
+		printf( '<b>%s</b> : %s<br>', $sh['tracking_provider'], $sh['tracking_number_linked'] );
+	}
+}
+
+
+
+
+
+
+
+
+
+
+/**
+ * MY FUNCTIONS
+ */
+function rz_get_post_metashipments_formatted($order_id, $link_tpl = '<a href="%s">%s</a>', $date_tpl = 'on %s', $date_format = 'M j, Y') {
+	
+	$array = get_post_meta($order_id, RZ_META_KEY_ITEM, false);
+	
+	// If meta data was empty return empty array
+	if ( empty($array) ) return array();
+
+	foreach( $array as $k=>$v ) {
+
+		// Check array format if not main return empty array
+		if( !isset($v['tracking_provider']) || !isset($v['tracking_number']) || !isset($v['tracking_link']) || !isset($v['date_shipped']) ) return array();
+
+		if( $v['tracking_link'] != '' ) {
+			// Put tracking number in link
+			$v['tracking_link'] = sprintf( $v['tracking_link'], $v['tracking_number'] );
+			$v['tracking_number_linked'] = sprintf( $link_tpl, $v['tracking_link'], $v['tracking_number'] );
+		} else {
+			$v['tracking_number_linked'] = $v['tracking_number'];
+		}
+
+		if( $v['date_shipped'] != '' ) {
+			$v['date_shipped_formatted'] = sprintf( $date_tpl, date_format( date_create($v['date_shipped']), $date_format) );
+		} else {
+			$v['date_shipped_formatted'] = $v['date_shipped'];
+		}
+
+		$array[$k] = $v;
+	}
+
+	return $array;
+}
+
+// Print shipment items
+function rz_print_shipment_list($shipment_tracking_items, $editable) {
+	
+	if( empty($shipment_tracking_items) ) return;
+
+?><ul class="order_notes">
+	<?php foreach( $shipment_tracking_items as &$sh ): ?>
+	<li rel="328" class="note">
+		<div class="note_content">
+			<p><b><?php echo $sh['tracking_provider']; ?></b> <?php echo $sh['tracking_number_linked']; ?></p>
+		</div>
+		<p class="meta">
+			Shipped on <time class="exact-date" datetime="<?php echo $sh['date_shipped']; ?>"><?php echo ( $sh['date_shipped_formatted'] ? $sh['date_shipped_formatted'] : 'no date' ) ?></time>
+			<?php if($editable):?><a href="#" class="delete_note" role="button">Delete</a><?php endif; ?>
+		</p>
+	</li>
+	<?php endforeach; ?>
+</ul><?php
+
+}
+
+// Print metabox form
+function rz_print_shipment_metabox ($shipment_email_sent) {
+
+?>
+	<?php wp_nonce_field( basename( __FILE__ ), 'rz_simple_shipment_sot_nonce' ); ?>
+ 
+	<p>
+		<label for="tracking_provider"><?php _e( "Provider Name <sup>*</sup>:", 'wc-simple-shipment-tracking' ); ?></label>
+		<br />
+		<input class="widefat" type="text" name="tracking_provider" id="tracking_provider" size="30" required />
+	</p>
+	<p>
+		<label for="tracking_number"><?php _e( "Tracking Number <sup>*</sup>:", 'wc-simple-shipment-tracking' ); ?></label>
+		<br />
+		<input class="widefat" type="text" name="tracking_number" id="tracking_number" size="30" required />
+	</p>
+	<p>
+		<label for="tracking_link"><?php _e( "Tracking Link:", 'wc-simple-shipment-tracking' ); ?></label>
+		<br />
+		<input class="widefat" type="text" name="tracking_link" id="tracking_link" placeholder="https://xyz.com/?trackingNum=%s" size="30" />
+		<span class="components-form-token-field__help">Use %s for tracking number's place in link!</span>
+	</p>
+	<p>
+		<label for="date_shipped"><?php _e( "Date Shipped:", 'wc-simple-shipment-tracking' ); ?></label>
+		<br />
+		<input class="widefat" type="date" name="date_shipped" id="date_shipped" size="30" />
+	</p>
+	<button type="submit" class="button save_order button-primary" name="add" value="Add"><?php _e('Add New Shipment Tracking')?></button>
+<?php
 
 }
