@@ -26,7 +26,7 @@ echo "= " . $email_heading . " =\n\n";
 $shipment_tracking = $order->get_meta('_wc_simple_shipment_tracking_items');
 
 // If tracking information provided!
-if( $shipment_tracking['tracking_number'] != '' ) {
+if( isset($shipment_tracking['tracking_number']) && $shipment_tracking['tracking_number'] != '' ) {
 
 	if( $shipment_tracking['tracking_link'] != '' ) {
 		// Replace %s in tracking_link with tracking number
@@ -38,7 +38,7 @@ if( $shipment_tracking['tracking_number'] != '' ) {
 		$shipment_tracking['date_shipped'] = ' on ' . date_format( date_create( $shipment_tracking['date_shipped'] ),"l, jS F" );
 	}
 
-	echo sprintf( __( 'Good news! Your order number %s has been shipped to %s%s, for tracking your order\'s package please use %s tracking code.', 'woocommerce' ),
+	echo sprintf( __( 'Good news! Your order number %s has been shipped to %s%s, Here\'s a tracking number that you can use to check the location of your package: %s. Please note that tracking may take up to one business day to activate.', 'woocommerce' ),
 		$order->get_order_number(),
 		$shipment_tracking['tracking_provider'],
 		$shipment_tracking['date_shipped'],
@@ -52,8 +52,11 @@ if( $shipment_tracking['tracking_number'] != '' ) {
 
 } else {
 	// If tracking information not provided.
-	printf( esc_html__( 'Good news! Your order number %s has been shipped.', 'woocommerce' ), esc_html( $order->get_order_number() ) );
+	printf( esc_html__( 'Good news! Your order number %s has been shipped. Your order will be delivered between 7-12 business days.' . "\n\n", 'woocommerce' ), esc_html( $order->get_order_number() ) );
 }
+
+echo "Please by replying to this email let us know if you have any questions.\n\n";
+echo "Thank you for placing your order with us!\n\n";
 
 echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
