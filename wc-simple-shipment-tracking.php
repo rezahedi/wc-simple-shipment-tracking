@@ -106,20 +106,12 @@ function rz_wwww_order_status_shipped_callback($order_id)
 /* Fire our meta box setup function on the post editor screen. */
 // TODO: IF order status is processing then show tracking metabox, wrap the three following lines in a if statement.
 // add_action('woocommerce_order_status_on-hold', 'rz_add_actions_metabox', 10, 1);
-// FIXME: This is not a proper way to call the function, why should I call it directly here????
-rz_add_actions_metabox(0);
-function rz_add_actions_metabox ( $order ) {
 
-	// FIXME: This should be fixed, because adding metaboxes to all post types is making errors in other post types.
-	// if( !$order->has_status('processing')) return false;
+// Add metabox setup action to init
+add_action('init', 'rz_metabox_setup');
 
-	add_action( 'post.php', 'rz_metabox_setup' );
-	add_action( 'load-post.php', 'rz_metabox_setup' );
-	add_action( 'load-post-new.php', 'rz_metabox_setup' );
-}
 /* Meta box setup function. */
 function rz_metabox_setup() {
-	// if( !is_product() ) return false;
 
 	/* Add meta boxes on the 'add_meta_boxes' hook. */
 	add_action( 'add_meta_boxes', 'rz_metabox_add',10, 2 );
@@ -129,14 +121,13 @@ function rz_metabox_setup() {
 }
 /* Create one or more meta boxes to be displayed on the post editor screen. */
 function rz_metabox_add($post_type, $post) {
+	if( $post_type != 'shop_order' ) return;
 
 	// Get order object
 	$order = new WC_Order($post->ID);
 
-	$shipment_tracking = get_post_meta( $order->ID, RZ_META_KEY_ITEM, true);
-
-	if( !$order->has_status('processing') && !$order->has_status('on-hold') && !$order->has_status('shippeddd') && empty($shipment_tracking) )
-		return;
+	// Get order status
+	$order_status = $order->get_status();
 
 	add_meta_box(
 		'simple-shipment-tracking-class',      // Unique ID
@@ -162,13 +153,13 @@ function rz_order_tracking_metabox_post( $post ) {
 	// Shipment metadata is editable
 	$editable = false;
 
-	if( $order->has_status(array('processing', 'on-hold', 'shippeddd') ) )
+	if( $order->has_status(array('processing', 'shippeddd') ) )
 		$editable = true;
 
 	rz_print_shipment_list( $shipment_tracking_items, $editable );
 
 	// Show metabox inputs if order status was in processing, on-hold or shippeddd
-	if( $order->has_status( array('on-hold', 'processing', 'shippeddd') ) ) {
+	if( $order->has_status( array('processing', 'shippeddd') ) ) {
 		$shipment_email_sent = get_post_meta( $post->ID, RZ_META_KEY_EMAIL_SENT, true);
 		rz_print_shipment_metabox($shipment_email_sent);
 	}
@@ -188,6 +179,11 @@ function rz_meta_save( $post_id, $post ) {
 	if ( !current_user_can( $post_type->cap->edit_post, $post_id ) )
 		return $post_id;
 
+	// TODO: metadata box should work by ajax when submitted
+	// check posted data is not empty
+	if( empty($_POST['tracking_provider']) && empty($_POST['tracking_number']) )
+		return $post_id;
+	
 	/* Get the posted data and sanitize it for use as an HTML class. */
 	$new_meta_value = Array(
 		'tracking_provider' =>	( isset( $_POST['tracking_provider'] ) ? sanitize_html_class( $_POST['tracking_provider'] ) : '' ),
@@ -235,7 +231,7 @@ function rz_shipment_tracking_column_header( $columns ) {
 	$new_columns = array();
 	foreach ($columns as $column_name => $column_info) {
 		 $new_columns[$column_name] = $column_info;
-		 if ('order_total' === $column_name) {
+		 if ('order_status' === $column_name) {
 			  $new_columns['shipment_tracking'] = __('Shipment Tracking', 'wc-simple-shipment-tracking');
 		 }
 	}
@@ -373,12 +369,12 @@ function rz_print_shipment_metabox ($shipment_email_sent) {
 	<p>
 		<label for="tracking_provider"><?php _e( "Provider Name <sup>*</sup>:", 'wc-simple-shipment-tracking' ); ?></label>
 		<br />
-		<input class="widefat" type="text" name="tracking_provider" id="tracking_provider" size="30" required />
+		<input class="widefat" type="text" name="tracking_provider" id="tracking_provider" size="30" />
 	</p>
 	<p>
 		<label for="tracking_number"><?php _e( "Tracking Number <sup>*</sup>:", 'wc-simple-shipment-tracking' ); ?></label>
 		<br />
-		<input class="widefat" type="text" name="tracking_number" id="tracking_number" size="30" required />
+		<input class="widefat" type="text" name="tracking_number" id="tracking_number" size="30" />
 	</p>
 	<p>
 		<label for="tracking_link"><?php _e( "Tracking Link:", 'wc-simple-shipment-tracking' ); ?></label>
