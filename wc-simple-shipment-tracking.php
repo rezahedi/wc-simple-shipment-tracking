@@ -135,7 +135,7 @@ function rz_metabox_add($post_type, $post) {
 		'rz_order_tracking_metabox_post',   // Callback function
 		'shop_order',         // Admin page (or post type)
 		'side',         // Context
-		'core'         // Priority
+		'high'         // Priority
 	);
 }
 /* Display the post meta box. */
@@ -156,7 +156,7 @@ function rz_order_tracking_metabox_post( $post ) {
 	if( $order->has_status(array('processing', 'shippeddd') ) )
 		$editable = true;
 
-	rz_print_shipment_list( $shipment_tracking_items, $editable );
+	rz_print_shipment_list( $shipment_tracking_items, $editable, $order );
 
 	// Show metabox inputs if order status was in processing, on-hold or shippeddd
 	if( $order->has_status( array('processing', 'shippeddd') ) ) {
@@ -340,13 +340,19 @@ function rz_get_post_metashipments_formatted($order_id, $link_tpl = '<a href="%s
 }
 
 // Print shipment items
-function rz_print_shipment_list($shipment_tracking_items, $editable) {
+function rz_print_shipment_list($shipment_tracking_items, $editable, $order) {
 	
-	if( empty($shipment_tracking_items) ) return;
+	// if order status was not shipped or processing show note message
+	if( !$order->has_status(array('shippeddd', 'processing')) )
+		echo "<p><i>To update shipment tracking, order status should be 'Processing' or 'Shipped'.</i></p>";
 
+	if( empty($shipment_tracking_items) ){
+		echo "<p><b>No shipment tracking data found.</b></p>";
+
+	} else {
 ?><ul class="order_notes">
 	<?php foreach( $shipment_tracking_items as &$sh ): ?>
-	<li rel="328" class="note">
+	<li class="note">
 		<div class="note_content">
 			<p><b><?php echo $sh['tracking_provider']; ?></b> <?php echo $sh['tracking_number_linked']; ?></p>
 		</div>
@@ -357,7 +363,7 @@ function rz_print_shipment_list($shipment_tracking_items, $editable) {
 	</li>
 	<?php endforeach; ?>
 </ul><?php
-
+	}
 }
 
 // Print metabox form
