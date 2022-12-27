@@ -7,6 +7,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// get shipment tracking data from order metadata and format it for email template
+$shipment_data = get_post_meta( $order->id, '_wc_simple_shipment_tracking_items', false);
+
+if( count($shipment_data) > 0 ) {
+
+	foreach( $shipment_data as $i => $v ) {
+
+		if( $v['tracking_link'] != '' ) {
+			// Replace %s in tracking_link with tracking number
+			$v['tracking_link'] = sprintf( $v['tracking_link'], $v['tracking_number'] );
+		
+			// Add tracking link html tag over tracking number!
+			$v['tracking_number'] = sprintf( '<a href="%s">%s</a>', $v['tracking_link'], $v['tracking_number'] );
+		}
+		
+		// Format shipment date like "Monday, 12th February" If available
+		if( $v['date_shipped'] != '' ) {
+			$v['date_shipped'] = date_format( date_create( $v['date_shipped'] ),"l, jS F" );
+		} else {
+			$v['date_shipped'] = 'None';
+		}
+
+		$shipment_data[ $i ] = $v;
+	}
+}
+
+
 /**
  * @hooked WC_Emails::email_header() Output the email header
  */
@@ -16,40 +43,31 @@ do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 <p><?php printf( esc_html__( 'Hey %s,', 'woocommerce' ), esc_html( $order->get_billing_first_name() ) ); ?></p>
 <?php /* translators: %s: Order number */ ?>
 
-<p><?php
-// get shipment tracking data from order metadata
-$shipment_tracking = $order->get_meta('_wc_simple_shipment_tracking_items');
+<p>Good news! Your order number <?php echo $order->get_order_number(); ?> has been shipped. Your order will be delivered between 7-12 business days.</p>
 
-// If tracking information provided!
-if( isset($shipment_tracking['tracking_number']) && $shipment_tracking['tracking_number'] != '' ) {
+<?php if( count($shipment_data) > 0 ): ?>
+	<p>Here are the tracking numbers that you can use to check the location of your packages. Please note that tracking may take up to one business day to activate.</p>
+	<table cellspacing="0" cellpadding="6" border="1" width="100%" style="color:#636363; border:1px solid #e5e5e5">
+		<thead>
+			<tr>
+				<th>Tracking Provider</th>
+				<th>Tracking Number</th>
+				<th>Date Shipped</th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach($shipment_data as $shipment): ?>
+			<tr>
+				<td><?php echo $shipment['tracking_provider']; ?></td>
+				<td><?php echo $shipment['tracking_number']; ?></td>
+				<td><?php echo $shipment['date_shipped']; ?></td>
+			</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+<?php endif; ?>
 
-	if( $shipment_tracking['tracking_link'] != '' ) {
-		// Replace %s in tracking_link with tracking number
-		$shipment_tracking['tracking_link'] = sprintf( $shipment_tracking['tracking_link'], $shipment_tracking['tracking_number'] );
-	
-		// Add tracking link html tag over tracking number!
-		$shipment_tracking['tracking_number_linked'] = sprintf( '<a href="%s">%s</a>', $shipment_tracking['tracking_link'], $shipment_tracking['tracking_number'] );
-	}
-	
-	// Format shipment date like "Monday, 12th February" If available
-	if( $shipment_tracking['date_shipped'] != '' ) {
-		$shipment_tracking['date_shipped'] = ' on ' . date_format( date_create( $shipment_tracking['date_shipped'] ),"l, jS F" );
-	}
-	
-	printf( esc_html__( 'Good news! Your order number %s has been shipped to %s%s, Here\'s a tracking number that you can use to check the location of your package: %s. Please note that tracking may take up to one business day to activate.', 'woocommerce' ),
-		esc_html( $order->get_order_number() ),
-		$shipment_tracking['tracking_provider'],
-		$shipment_tracking['date_shipped'],
-		( $shipment_tracking['tracking_link'] !='' ? $shipment_tracking['tracking_number_linked'] : $shipment_tracking['tracking_number'] )
-	);
-
-} else {
-	// If tracking information not provided.
-	printf( esc_html__( 'Good news! Your order number %s has been shipped. Your order will be delivered between 7-12 business days.', 'woocommerce' ), esc_html( $order->get_order_number() ) );
-}
-
-?></p>
-
+<p></p>
 <p>Please by replying to this email let us know if you have any questions.</p>
 <p>Thank you for placing your order with us!</p>
 

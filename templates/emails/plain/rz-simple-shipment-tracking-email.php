@@ -20,39 +20,45 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// get shipment tracking data from order metadata and format it for email template
+$shipment_data = get_post_meta( $order->id, '_wc_simple_shipment_tracking_items', false);
+
+if( count($shipment_data) > 0 ) {
+
+	foreach( $shipment_data as $i => $v ) {
+		if( $v['tracking_link'] != '' ) {
+			// Replace %s in tracking_link with tracking number
+			$v['tracking_link'] = sprintf( $v['tracking_link'], $v['tracking_number'] );
+		}
+		
+		// Format shipment date like "Monday, 12th February" If available
+		if( $v['date_shipped'] != '' ) {
+			$v['date_shipped'] = date_format( date_create( $v['date_shipped'] ),"l, jS F" );
+		} else {
+			$v['date_shipped'] = 'None';
+		}
+
+		$shipment_data[ $i ] = $v;
+	}
+}
+
+
 echo "= " . $email_heading . " =\n\n";
 
-// get shipment tracking data from order metadata
-$shipment_tracking = $order->get_meta('_wc_simple_shipment_tracking_items');
+echo sprintf( "Good news! Your order number %s has been shipped. Your order will be delivered between 7-12 business days.\n\n", $order->get_order_number() );
 
-// If tracking information provided!
-if( isset($shipment_tracking['tracking_number']) && $shipment_tracking['tracking_number'] != '' ) {
+if( count($shipment_data) > 0 ) {
+	echo "Here are the tracking numbers that you can use to check the location of your packages. Please note that tracking may take up to one business day to activate.\n\n";
 
-	if( $shipment_tracking['tracking_link'] != '' ) {
-		// Replace %s in tracking_link with tracking number
-		$shipment_tracking['tracking_link'] = sprintf( $shipment_tracking['tracking_link'], $shipment_tracking['tracking_number'] );
+	foreach( $shipment_data as $i => $v ) {
+		echo "Package Number: " . ( $i + 1 ) . "\n";
+		echo "Tracking Provider: " . $v['tracking_provider'] . "\n";
+		echo "Tracking Number: " . $v['tracking_number'] . "\n";
+		echo "Date Shipped: " . $v['date_shipped'] . "\n";
+		if( $v['tracking_link'] != '')
+			echo "Tracking Link: " . $v['tracking_link'] . "\n";
+		echo "\n";
 	}
-
-	// Format shipment date like "Monday, 12th February" If available
-	if( $shipment_tracking['date_shipped'] != '' ) {
-		$shipment_tracking['date_shipped'] = ' on ' . date_format( date_create( $shipment_tracking['date_shipped'] ),"l, jS F" );
-	}
-
-	echo sprintf( __( 'Good news! Your order number %s has been shipped to %s%s, Here\'s a tracking number that you can use to check the location of your package: %s. Please note that tracking may take up to one business day to activate.', 'woocommerce' ),
-		$order->get_order_number(),
-		$shipment_tracking['tracking_provider'],
-		$shipment_tracking['date_shipped'],
-		$shipment_tracking['tracking_number']
-	) . "\n\n";
-
-	// Print tracking_link if available
-	if( $shipment_tracking['tracking_link'] != '' ) {
-		echo sprintf( __("Or just copy the following link to your browser: \n\n%s\n\n"), $shipment_tracking['tracking_link'] );
-	}
-
-} else {
-	// If tracking information not provided.
-	printf( esc_html__( 'Good news! Your order number %s has been shipped. Your order will be delivered between 7-12 business days.' . "\n\n", 'woocommerce' ), esc_html( $order->get_order_number() ) );
 }
 
 echo "Please by replying to this email let us know if you have any questions.\n\n";
