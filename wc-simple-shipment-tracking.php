@@ -25,8 +25,8 @@ define( 'RZ_META_KEY_EMAIL_SENT', '_wc_simple_shipment_tracking_email_sent' );
 add_action( 'init', 'rz_register_shipped_order_status' );
 function rz_register_shipped_order_status()
 {
-	register_post_status( 'wc-shippeddd', array(
-		'label'								=> _x('Shipped (test)', 'Custom order status for shipped!','wc-simple-shipment-tracking'),
+	register_post_status( 'wc-shipped', array(
+		'label'								=> _x('Shipped', 'Custom order status for shipped!','wc-simple-shipment-tracking'),
 		'public'								=> true,
 		'exclude_from_search'			=> false,
 		'show_in_admin_all_list'		=> true,
@@ -35,16 +35,24 @@ function rz_register_shipped_order_status()
 	));
 }
 
-/*
-// Add 'Shipped' to Order Actions Metabox on Order Page
-add_action( 'woocommerce_order_actions', 'rz_add_order_meta_box_actions' );
-// Add Order action to Order action meta box
-function rz_add_order_meta_box_actions($actions)
+
+// Add 'Resend Email' action to Order Actions Metabox
+add_action( 'woocommerce_order_actions', 'rz_add_resend_action' );
+
+function rz_add_resend_action( $actions )
 {
-   $actions['wc-shippeddd'] = __( 'Resend shipped notification (test)', 'wc-simple-shipment-tracking');
+   $actions['rz-resend-email-action'] = __( 'Resend shipped email notification', 'wc-simple-shipment-tracking');
    return $actions; 
 }
-*/
+
+// Link callback to our custom action 'rz-resend-email-action'
+add_action( 'woocommerce_order_action_rz-resend-email-action', 'rz_resend_email_action');
+function rz_resend_email_action( $order ) {
+	$wc_emails = WC()->mailer()->get_emails();
+	$wc_emails['wc-shipped']->trigger( $order->get_id() );
+}
+
+
 
 // Add 'Shipped' to Order Status list on Single Order Page
 add_filter( 'wc_order_statuses', 'rz_add_shipped_to_order_statuses' );
@@ -58,7 +66,7 @@ function rz_add_shipped_to_order_statuses($order_statuses)
 		$new_order_statuses[ $key ] = $status;
 		if ( 'wc-on-hold' === $key ) 
 		{
-			$new_order_statuses['wc-shippeddd'] = _x('Shipped (test)', 'Custom order status for shipped!','wc-simple-shipment-tracking');    
+			$new_order_statuses['wc-shipped'] = _x('Shipped (test)', 'Custom order status for shipped!','wc-simple-shipment-tracking');    
 		}
 	}
 	return $new_order_statuses;
@@ -67,7 +75,7 @@ function rz_add_shipped_to_order_statuses($order_statuses)
 // Adding custom status 'awaiting-delivery' to admin order list bulk dropdown
 add_filter( 'bulk_actions-edit-shop_order', 'custom_dropdown_bulk_actions_shop_order', 20, 1 );
 function custom_dropdown_bulk_actions_shop_order( $actions ) {
-    $actions['mark_shippeddd'] = __( 'Mark Shipped', 'wc-simple-shipment-tracking' );
+    $actions['mark_shipped'] = __( 'Change status to Shipped', 'wc-simple-shipment-tracking' );
     return $actions;
 }
 
@@ -77,11 +85,11 @@ function custom_dropdown_bulk_actions_shop_order( $actions ) {
 /*
 // Add callback if Shipped action called
 // The following function written on the ‘woocommerce_order_action_massimo_shipped’ hook will be called when ‘Shipped’ has been selected from the order actions drop-down list
-add_action( 'woocommerce_order_action_wc-shippeddd', 'rz_order_shipped_callback');
+add_action( 'woocommerce_order_action_wc-shipped', 'rz_order_shipped_callback');
 function rz_order_shipped_callback($order)
 {
 	error_log(__METHOD__);
-	$order->update_status('wc-shippeddd', 'Order status changed by "Order Actions".');
+	$order->update_status('wc-shipped', 'Order status changed by "Order Actions".');
 	
 	// This function used for when we sent a shipped email before, but need to send the shipped email again.
 	// So when this function selected from Order Actions dropdown we update the order status to shipped and send the email in anyway (if status updated and email sent before)
@@ -91,7 +99,7 @@ function rz_order_shipped_callback($order)
 }
 
 //Add callback if Status changed to Shipping
-add_action('woocommerce_order_status_wc-shippeddd', 'rz_wwww_order_status_shipped_callback');
+add_action('woocommerce_order_status_wc-shipped', 'rz_wwww_order_status_shipped_callback');
 function rz_wwww_order_status_shipped_callback($order_id)
 {
 	error_log(__METHOD__);
@@ -153,13 +161,13 @@ function rz_order_tracking_metabox_post( $post ) {
 	// Shipment metadata is editable
 	$editable = false;
 
-	if( $order->has_status(array('processing', 'shippeddd') ) )
+	if( $order->has_status(array('processing', 'shipped') ) )
 		$editable = true;
 
 	rz_print_shipment_list( $shipment_tracking_items, $editable, $order );
 
-	// Show metabox inputs if order status was in processing, on-hold or shippeddd
-	if( $order->has_status( array('processing', 'shippeddd') ) ) {
+	// Show metabox inputs if order status was in processing, on-hold or shipped
+	if( $order->has_status( array('processing', 'shipped') ) ) {
 		$shipment_email_sent = get_post_meta( $post->ID, RZ_META_KEY_EMAIL_SENT, true);
 		rz_print_shipment_metabox($shipment_email_sent);
 	}
@@ -201,21 +209,21 @@ add_filter( 'woocommerce_email_classes', 'rz_shipped_email_class', 90, 1 );
 function rz_shipped_email_class( $email_classes ) {
 	require_once plugin_dir_path( __FILE__ ) . '/rz_shipped_email.php';
 
-	$email_classes['wc-shippeddd'] = new RZ_Shipped_Email(); // add to the list of email classes that WooCommerce loads
+	$email_classes['wc-shipped'] = new RZ_Shipped_Email(); // add to the list of email classes that WooCommerce loads
 
 	return $email_classes;
 }
 
 add_action( 'woocommerce_order_status_changed', 'rz_status_custom_notification', 10, 4 );
-function rz_status_custom_notification( $order_id, $from_status, $to_status, $order ) {
+function rz_status_custom_notification( $order_id, $old_status, $new_status, $order ) {
 	
-	if( $order->has_status( 'shippeddd' ) ) {
+	if( $order->has_status( 'shipped' ) ) {
 
 		// Getting all WC_emails objects
 		$email_notifications = WC()->mailer()->get_emails();
 
 		// Sending the customized email
-		$email_notifications['wc-shippeddd']->trigger( $order_id );
+		$email_notifications['wc-shipped']->trigger( $order_id );
 	}
 
 }
@@ -343,7 +351,7 @@ function rz_get_post_metashipments_formatted($order_id, $link_tpl = '<a href="%s
 function rz_print_shipment_list($shipment_tracking_items, $editable, $order) {
 	
 	// if order status was not shipped or processing show note message
-	if( !$order->has_status(array('shippeddd', 'processing')) )
+	if( !$order->has_status(array('shipped', 'processing')) )
 		echo "<p><i>To update shipment tracking, order status should be 'Processing' or 'Shipped'.</i></p>";
 
 	if( empty($shipment_tracking_items) ){
