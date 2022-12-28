@@ -25,7 +25,7 @@ class RZ_Shipped_Email extends WC_Email {
 		$this->customer_email = true;
 		
 		// Title field in WooCommerce Email settings
-		$this->title = __( 'Shipped Email', 'wc-simple-shipment-tracking' );
+		$this->title = __( 'Shipped order', 'wc-simple-shipment-tracking' );
 		// Description field in WooCommerce email settings
 		$this->description = __( 'Shipped email is sent when an order processed for the customer who placed the order.', 'wc-simple-shipment-tracking' );
 		// Default heading and subject lines in WooCommerce email settings
@@ -37,7 +37,7 @@ class RZ_Shipped_Email extends WC_Email {
 		$this->template_plain = 'emails/plain/rz-customer-shipped-order.php';
 
 		// Check if email template file exists in theme folder, if not, use plugin default template file
-		$wc_template_base_in_theme = get_template_directory() . '/woocommerce/templates/';
+		$wc_template_base_in_theme = get_template_directory() . '/woocommerce/';
 		if( file_exists( $wc_template_base_in_theme . $this->template_html ) ) {
 			$this->template_base = $wc_template_base_in_theme;
 
@@ -88,49 +88,47 @@ class RZ_Shipped_Email extends WC_Email {
 	 *
 	 * @param int $order_id
 	 */
-	public function trigger( $order_id ) {
+	public function trigger( $order_id, $resend = false ) {
 
 		// Bail if no order ID is present
 		if ( ! $order_id )
 			return;
 		
-		// Send welcome email only once and not on every order status change		
-		// if ( ! get_post_meta( $order_id, RZ_META_KEY_EMAIL_SENT, true ) ) {
-			
-			// setup order object
-			$this->object = new WC_Order( $order_id );
-			
-			// get order items as array
-			$order_items = $this->object->get_items();
-			//* Maybe include an additional check to make sure that the online training program account was created
-			/* Uncomment and add your own conditional check
-			$online_training_account_created = get_post_meta( $this->object->id, '_crwc_user_account_created', 1 );
-			
-			if ( ! empty( $online_training_account_created ) && false === $online_training_account_created ) {
-				return;
-			}
-			*/
-			/* Proceed with sending email */
-			
-			$this->recipient = $this->object->billing_email;
-			// replace variables in the subject/headings
-			$this->find[] = '{order_date}';
-			$this->replace[] = date_i18n( woocommerce_date_format(), strtotime( $this->object->order_date ) );
-			$this->find[] = '{order_number}';
-			$this->replace[] = $this->object->get_order_number();
-			if ( ! $this->is_enabled() || ! $this->get_recipient() ) {
-				return;
-			}
-			// All well, send the email
-			$this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
-			
-			// add order note about the same
-			$this->object->add_order_note( sprintf( __( '"%s" email sent to the customer.', 'wc-simple-shipment-tracking' ), $this->title ) );
-			// Set order meta to indicate that the welcome email was sent
-			update_post_meta( $this->object->id, RZ_META_KEY_EMAIL_SENT, 1 );
-			
-		// }
+		// Send shipped email only once and not on every order status change
+		if ( get_post_meta( $order_id, RZ_META_KEY_EMAIL_SENT, true ) && !$resend ) return;
+
+		// setup order object
+		$this->object = new WC_Order( $order_id );
 		
+		// get order items as array
+		$order_items = $this->object->get_items();
+		//* Maybe include an additional check to make sure that the online training program account was created
+		/* Uncomment and add your own conditional check
+		$online_training_account_created = get_post_meta( $this->object->id, '_crwc_user_account_created', 1 );
+		
+		if ( ! empty( $online_training_account_created ) && false === $online_training_account_created ) {
+			return;
+		}
+		*/
+		/* Proceed with sending email */
+		
+		$this->recipient = $this->object->billing_email;
+		// replace variables in the subject/headings
+		$this->find[] = '{order_date}';
+		$this->replace[] = date_i18n( woocommerce_date_format(), strtotime( $this->object->order_date ) );
+		$this->find[] = '{order_number}';
+		$this->replace[] = $this->object->get_order_number();
+		if ( ! $this->is_enabled() || ! $this->get_recipient() ) {
+			return;
+		}
+		// All well, send the email
+		$this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
+		
+		// add order note about sending the email
+		$note_message = __( ($resend ? '"%s" email resent again to the customer.' : '"%s" email sent to the customer.'), 'wc-simple-shipment-tracking' );		
+		$this->object->add_order_note( sprintf( $note_message, $this->title ) );
+		// Set order meta to indicate that the welcome email was sent
+		update_post_meta( $this->object->id, RZ_META_KEY_EMAIL_SENT, 1 );
 	}
 	
 	/**

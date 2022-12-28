@@ -49,7 +49,7 @@ function rz_add_resend_action( $actions )
 add_action( 'woocommerce_order_action_rz-resend-email-action', 'rz_resend_email_action');
 function rz_resend_email_action( $order ) {
 	$wc_emails = WC()->mailer()->get_emails();
-	$wc_emails['wc-shipped']->trigger( $order->get_id() );
+	$wc_emails['wc-shipped']->trigger( $order->get_id(), true );
 }
 
 
@@ -74,7 +74,7 @@ function rz_add_shipped_to_order_statuses($order_statuses)
 // Add style for Shipped label in Orders list page in admin panel
 add_action('admin_head', 'rz_shipped_label_style');
 function rz_shipped_label_style() {
-	echo '<style>.order-status.status-shipped{background:#5b841b;color:#fff}</style>';
+	echo '<style>.order-status.status-shipped{background:#769349;color:#fff}</style>';
 }
 
 
@@ -255,15 +255,14 @@ function rz_shipment_tracking_column_header( $columns ) {
 add_action( 'manage_shop_order_posts_custom_column', 'rz_shipment_tracking_column_content' );
 function rz_shipment_tracking_column_content( $column ) {
 	global $post;
-	// TODO: write a function to filter out metabox data, date format, tracking link, tracking number linked...
-	// TODO: check errors if one of the data not available, like date_shipped or tracking_link, because these are not required to add!
+
 	if ( 'shipment_tracking' === $column ) {
 		
-		$shipment_tracking_arr = get_post_meta($post->ID, RZ_META_KEY_ITEM, true);
-		$shipment_tracking_arr = rz_get_post_metashipments_formatted($post->ID, '<a target="_blank" href="%s">%s</a>');
+		$shipment_data = rz_get_post_metashipments_formatted($post->ID, '<a target="_blank" href="%s">%s</a>');
+		if ( !$shipment_data ) return;
 
-		foreach( $shipment_tracking_arr as &$sh ) {
-			printf( '<b>%s</b> : %s<br>', $sh['tracking_provider'], $sh['tracking_number_linked'] );
+		foreach( $shipment_data as $v ) {
+			printf( '<b>%s</b> : %s<br>', $v['tracking_provider'], $v['tracking_number_linked'] );
 		}
 	}
 }
@@ -271,29 +270,30 @@ function rz_shipment_tracking_column_content( $column ) {
 
 
 // Tracking info in >> Frontend <<
-// Add column to "My Account" > "Orders" table after "Order Total" column
+// Add column title to "My Account" > "Orders" table after "Order Status" column
 
 add_filter( 'woocommerce_my_account_my_orders_columns', 'rz_add_tracking_to_my_account_orders' );
 function rz_add_tracking_to_my_account_orders( $columns ) {
 	$new_columns = array();
 	foreach ($columns as $column_name => $column_info) {
 		 $new_columns[$column_name] = $column_info;
-		 if ('order-total' === $column_name) {
+		 if ('order-status' === $column_name) {
 			  $new_columns['shipment_tracking'] = __('Shipment Tracking', 'wc-simple-shipment-tracking');
 		 }
 	}
 	return $new_columns;
 }
 
-// Add tracking info to "My Account" > "Orders" table
+// Add column data to "My Account" > "Orders" table
 add_action( 'woocommerce_my_account_my_orders_column_shipment_tracking', 'rz_add_tracking_to_my_account_orders_table' );
 
 function rz_add_tracking_to_my_account_orders_table( $order ) {
 
-	$shipment_tracking_arr = rz_get_post_metashipments_formatted($order->get_id(), '<a target="_blank" href="%s">%s</a>');
+	$shipment_data = rz_get_post_metashipments_formatted($order->get_id(), '<a target="_blank" href="%s">%s</a>');
+	if ( !$shipment_data ) return;
 
-	foreach( $shipment_tracking_arr as &$sh ) {
-		printf( '<b>%s</b> : %s<br>', $sh['tracking_provider'], $sh['tracking_number_linked'] );
+	foreach( $shipment_data as $v ) {
+		printf( '<b>%s</b> : %s<br>', $v['tracking_provider'], $v['tracking_number_linked'] );
 	}
 }
 
@@ -302,10 +302,18 @@ function rz_add_tracking_to_my_account_orders_table( $order ) {
 add_action('woocommerce_view_order', 'rz_add_tracking_to_my_account_order_view');
 function rz_add_tracking_to_my_account_order_view( $order_id ) {
 
-	$shipment_tracking_arr = rz_get_post_metashipments_formatted($order_id, '<a target="_blank" href="%s">%s</a>');
+	$shipment_data = rz_get_post_metashipments_formatted($order_id, '<a target="_blank" href="%s">%s</a>', '%s');
+	if ( !$shipment_data ) return;
 
-	foreach( $shipment_tracking_arr as &$sh ) {
-		printf( '<b>%s</b> : %s<br>', $sh['tracking_provider'], $sh['tracking_number_linked'] );
+	// Check if template file exists in theme folder, if not, use plugin default template file
+	$template_file = "myaccount/rz-tracking-info.php";
+	$wc_template_base_in_theme = get_template_directory() . '/woocommerce/';
+
+	if( file_exists( $wc_template_base_in_theme . $template_file ) ) {
+		require_once( $wc_template_base_in_theme . $template_file );
+
+	} else {
+		require_once( plugin_dir_path( __FILE__ ) . 'templates/' . $template_file );
 	}
 }
 
@@ -326,7 +334,7 @@ function rz_get_post_metashipments_formatted($order_id, $link_tpl = '<a href="%s
 	$array = get_post_meta($order_id, RZ_META_KEY_ITEM, false);
 	
 	// If meta data was empty return empty array
-	if ( empty($array) ) return array();
+	if ( empty($array) ) return false;
 
 	foreach( $array as $k=>$v ) {
 
