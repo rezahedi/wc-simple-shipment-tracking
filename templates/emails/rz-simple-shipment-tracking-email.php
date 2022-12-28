@@ -67,10 +67,6 @@ do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 	</table>
 <?php endif; ?>
 
-<p></p>
-<p>Please by replying to this email let us know if you have any questions.</p>
-<p>Thank you for placing your order with us!</p>
-
 <?php
 
 /**

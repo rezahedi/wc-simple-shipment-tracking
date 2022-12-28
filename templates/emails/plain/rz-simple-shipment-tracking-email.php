@@ -56,13 +56,10 @@ if( count($shipment_data) > 0 ) {
 		echo "Tracking Number: " . $v['tracking_number'] . "\n";
 		echo "Date Shipped: " . $v['date_shipped'] . "\n";
 		if( $v['tracking_link'] != '')
-			echo "Tracking Link: " . $v['tracking_link'] . "\n";
+			echo "Tracking Link:\n" . $v['tracking_link'] . "\n";
 		echo "\n";
 	}
 }
-
-echo "Please by replying to this email let us know if you have any questions.\n\n";
-echo "Thank you for placing your order with us!\n\n";
 
 echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
