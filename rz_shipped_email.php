@@ -33,8 +33,8 @@ class RZ_Shipped_Email extends WC_Email {
 		$this->heading = apply_filters( 'rz_shipped_email_default_heading', __( 'Your Order Has Been Shipped', 'wc-simple-shipment-tracking' ) );
 		
 		// Email template file path
-		$this->template_html  = 'emails/rz-simple-shipment-tracking-email.php';
-		$this->template_plain = 'emails/plain/rz-simple-shipment-tracking-email.php';
+		$this->template_html  = 'emails/rz-customer-shipped-order.php';
+		$this->template_plain = 'emails/plain/rz-customer-shipped-order.php';
 
 		// Check if email template file exists in theme folder, if not, use plugin default template file
 		$wc_template_base_in_theme = get_template_directory() . '/woocommerce/templates/';

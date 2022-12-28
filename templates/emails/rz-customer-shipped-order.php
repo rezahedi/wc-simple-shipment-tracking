@@ -1,6 +1,8 @@
 <?php
 /**
- * Cancelled Order sent to Customer.
+ * Shipped order email sent to customer (html version)
+ *
+ * This template can be overridden by copying it to yourtheme/woocommerce/emails/rz-simple-shipment-tracking-email.php.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
