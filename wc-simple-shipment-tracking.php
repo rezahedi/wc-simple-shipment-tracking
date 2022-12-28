@@ -200,10 +200,10 @@ function rz_meta_save( $post_id, $post ) {
 	
 	/* Get the posted data and sanitize it for use as an HTML class. */
 	$new_meta_value = Array(
-		'tracking_provider' =>	( isset( $_POST['tracking_provider'] ) ? sanitize_html_class( $_POST['tracking_provider'] ) : '' ),
-		'tracking_number' =>		( isset( $_POST['tracking_number'] ) ? sanitize_html_class( $_POST['tracking_number'] ) : '' ),
+		'tracking_provider' =>	( isset( $_POST['tracking_provider'] ) ? sanitize_text_field( $_POST['tracking_provider'] ) : '' ),
+		'tracking_number' =>		( isset( $_POST['tracking_number'] ) ? sanitize_text_field( $_POST['tracking_number'] ) : '' ),
 		'tracking_link' =>		( isset( $_POST['tracking_link'] ) ? sanitize_url( $_POST['tracking_link'] ) : '' ),
-		'date_shipped' =>			( isset( $_POST['date_shipped'] ) ? sanitize_html_class( $_POST['date_shipped'] ) : '' )
+		'date_shipped' =>			( isset( $_POST['date_shipped'] ) ? sanitize_text_field( $_POST['date_shipped'] ) : '' )
 	);
 
 	add_post_meta( $post_id, RZ_META_KEY_ITEM, $new_meta_value, false );
@@ -381,6 +381,7 @@ function rz_print_shipment_list($shipment_tracking_items, $editable, $order) {
 		<p class="meta">
 			Shipped on <time class="exact-date" datetime="<?php echo $sh['date_shipped']; ?>"><?php echo ( $sh['date_shipped_formatted'] ? $sh['date_shipped_formatted'] : 'no date' ) ?></time>
 			<?php if($editable):?><a href="#" class="delete_note" role="button">Delete</a><?php endif; ?>
+				<!-- TODO: Remove metadata by ajax -->
 		</p>
 	</li>
 	<?php endforeach; ?>
@@ -390,11 +391,43 @@ function rz_print_shipment_list($shipment_tracking_items, $editable, $order) {
 
 // Print metabox form
 function rz_print_shipment_metabox ($shipment_email_sent) {
+	
+	// Get providers list from json file
+	if( file_exists( plugin_dir_path( __FILE__ ) . '/courier_list.json' ) )
+		$providers_list = json_decode( file_get_contents( plugin_dir_path( __FILE__ ) . '/courier_list.json' ), true );
 
-?>
-	<?php wp_nonce_field( basename( __FILE__ ), 'rz_simple_shipment_sot_nonce' ); ?>
- 
-	<p>
+	?>
+	<?php wp_nonce_field( basename( __FILE__ ), 'rz_simple_shipment_sot_nonce' ); ?> 
+	<?php if($providers_list): ?>
+	<p><select name="providers_list" class="widefat">
+		<option>Select the Provider</option>
+		<?php foreach( $providers_list as $i => $v ): ?>
+			<option value="<?php echo $v['link']; ?>"><?php echo $v['name']; ?></option>
+		<?php endforeach; ?>
+		<option value="custom">Custom Provider</option>
+	</select></p>
+	<script>
+		jQuery(document).ready(function($){
+			$('select[name="providers_list"]').change(function(){
+				if( $(this).val() == 'custom' ) {
+					$('input[name="tracking_provider"]').val( '' );
+					$('input[name="tracking_link"]').val( '' );
+
+					$('.customShow').css({'visibility': 'visible', 'height': 'auto', 'margin': '1rem 0', 'float': 'none'})
+
+				} else {
+					$('.customShow').css({'visibility': 'hidden', 'height': 0, 'margin': 0, 'float': 'left'})
+
+					$('input[name="tracking_provider"]').val( $(this).find(':selected').text() );
+					$('input[name="tracking_link"]').val( $(this).val() );
+				}
+			});
+		});
+
+		// TODO: add metadata by ajax
+	</script>
+	<?php endif; ?>
+	<p class="customShow" <?php if($providers_list): ?>style="visibility:hidden;height:0;margin:0;float:left"<?php endif; ?>>
 		<label for="tracking_provider"><?php _e( "Provider Name <sup>*</sup>:", 'wc-simple-shipment-tracking' ); ?></label>
 		<br />
 		<input class="widefat" type="text" name="tracking_provider" id="tracking_provider" size="30" />
@@ -404,7 +437,7 @@ function rz_print_shipment_metabox ($shipment_email_sent) {
 		<br />
 		<input class="widefat" type="text" name="tracking_number" id="tracking_number" size="30" />
 	</p>
-	<p>
+	<p class="customShow" <?php if($providers_list): ?>style="visibility:hidden;height:0;margin:0;float:left"<?php endif; ?>>
 		<label for="tracking_link"><?php _e( "Tracking Link:", 'wc-simple-shipment-tracking' ); ?></label>
 		<br />
 		<input class="widefat" type="text" name="tracking_link" id="tracking_link" placeholder="https://xyz.com/?trackingNum=%s" size="30" />
@@ -416,6 +449,5 @@ function rz_print_shipment_metabox ($shipment_email_sent) {
 		<input class="widefat" type="date" name="date_shipped" id="date_shipped" size="30" />
 	</p>
 	<button type="submit" class="button save_order button-primary" name="add" value="Add"><?php _e('Add New Shipment Tracking')?></button>
-<?php
-
+	<?php
 }

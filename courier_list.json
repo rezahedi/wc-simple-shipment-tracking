@@ -1,0 +1,37 @@
+[
+	{
+		"name": "DHL US",
+		"link": "https://www.dhl.com/us-en/home/tracking/tracking-express.html?submit=1&tracking-id=%s",
+		"image": "assets/dhl-us.png"
+	},
+	{
+		"name": "DHL Parcel",
+		"link": "https://www.dhl.com/de/home/tracking/tracking-express.html?submit=1&tracking-id=%s",
+		"image": "assets/dhl-parcel.png"
+	},
+	{
+		"name": "TNT",
+		"link": "https://www.tnt.com/express/en_us/site/tracking.html?searchType=con&cons=%s",
+		"image": "assets/tnt.png"
+	},
+	{
+		"name": "ABF",
+		"link": "https://arcb.com/tools/tracking.html",
+		"image": "assets/abf.png"
+	},
+	{
+		"name": "FedEx",
+		"link": "https://www.fedex.com/fedextrack/?trknbr=%s",
+		"image": "assets/fedex.png"
+	},
+	{
+		"name": "UPS",
+		"link": "http://wwwapps.ups.com/WebTracking/track?track=yes&trackNums=%s",
+		"image": "assets/ups.png"
+	},
+	{
+		"name": "USPS",
+		"link": "https://tools.usps.com/go/TrackConfirmAction_input?qtc_tLabels1=%s",
+		"image": "assets/usps.png"
+	}
+]
