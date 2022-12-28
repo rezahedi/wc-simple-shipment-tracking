@@ -53,7 +53,6 @@ function rz_resend_email_action( $order ) {
 }
 
 
-
 // Add 'Shipped' to Order Status list on Single Order Page
 add_filter( 'wc_order_statuses', 'rz_add_shipped_to_order_statuses' );
 /* Adds new Order status - Shipped in Order statuses*/
@@ -66,11 +65,18 @@ function rz_add_shipped_to_order_statuses($order_statuses)
 		$new_order_statuses[ $key ] = $status;
 		if ( 'wc-on-hold' === $key ) 
 		{
-			$new_order_statuses['wc-shipped'] = _x('Shipped (test)', 'Custom order status for shipped!','wc-simple-shipment-tracking');    
+			$new_order_statuses['wc-shipped'] = _x('Shipped', 'Custom order status for shipped!','wc-simple-shipment-tracking');    
 		}
 	}
 	return $new_order_statuses;
 }
+
+// Add style for Shipped label in Orders list page in admin panel
+add_action('admin_head', 'rz_shipped_label_style');
+function rz_shipped_label_style() {
+	echo '<style>.order-status.status-shipped{background:#5b841b;color:#fff}</style>';
+}
+
 
 // Adding custom status 'awaiting-delivery' to admin order list bulk dropdown
 add_filter( 'bulk_actions-edit-shop_order', 'custom_dropdown_bulk_actions_shop_order', 20, 1 );
