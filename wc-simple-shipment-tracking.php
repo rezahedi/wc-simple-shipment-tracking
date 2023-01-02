@@ -135,9 +135,6 @@ function rz_metabox_setup() {
 
 	/* Add meta boxes on the 'add_meta_boxes' hook. */
 	add_action( 'add_meta_boxes', 'rz_metabox_add',10, 2 );
-
-	/* Save post meta on the 'save_post' hook. */
-	add_action( 'save_post', 'rz_meta_save', 10, 2 );
 }
 /* Create one or more meta boxes to be displayed on the post editor screen. */
 function rz_metabox_add($post_type, $post) {
@@ -150,7 +147,7 @@ function rz_metabox_add($post_type, $post) {
 	$order_status = $order->get_status();
 
 	add_meta_box(
-		'simple-shipment-tracking-class',      // Unique ID
+		'rz-sst-id',      // Unique ID
 		esc_html__( 'Shipment Tracking', 'wc-simple-shipment-tracking' ),    // Title
 		'rz_order_tracking_metabox_post',   // Callback function
 		'shop_order',         // Admin page (or post type)
@@ -165,17 +162,11 @@ function rz_order_tracking_metabox_post( $post ) {
 	$order = new WC_Order($post->ID);
 
 	// Get order metadata
-	$shipment_data = rz_get_post_metashipments_formatted($post->ID, '<a target="_blank" href="%s">%s</a>', '%s', 'F j, Y');
+	$shipment_data = rz_get_post_metashipments_formatted($post->ID, '%s', 'F j, Y');
 
-	// Shipment metadata is editable
-	$editable = false;
+	echo "<div id='rz-sst-content'>";
 
-	if( $order->has_status(array('processing', 'shipped') ) )
-		$editable = true;
-
-	echo "<div id='woocommerce-shipment-tracking'>";
-
-	rz_print_shipment_list( $shipment_data, $editable, $order );
+	rz_print_shipment_list( $shipment_data, $order );
 
 	// Show metabox inputs if order status was in processing, on-hold or shipped
 	if( $order->has_status( array('processing', 'shipped') ) ) {
@@ -238,7 +229,8 @@ function rz_meta_add() {
 	// Add the note
 	$order->add_order_note( $note );
 
-	echo '1';
+	$formatted_data = rz_format_data($new_meta_value, '%s', 'F j, Y');
+	echo json_encode($formatted_data);
 	die();
 }
 /* Delete the metadata ajax */
@@ -341,7 +333,7 @@ function rz_shipment_tracking_column_content( $column ) {
 
 	if ( 'shipment_tracking' === $column ) {
 		
-		$shipment_data = rz_get_post_metashipments_formatted($post->ID, '<a target="_blank" href="%s">%s</a>');
+		$shipment_data = rz_get_post_metashipments_formatted($post->ID);
 		if ( !$shipment_data ) return;
 
 		foreach( $shipment_data as $v ) {
@@ -372,7 +364,7 @@ add_action( 'woocommerce_my_account_my_orders_column_shipment_tracking', 'rz_add
 
 function rz_add_tracking_to_my_account_orders_table( $order ) {
 
-	$shipment_data = rz_get_post_metashipments_formatted($order->get_id(), '<a target="_blank" href="%s">%s</a>');
+	$shipment_data = rz_get_post_metashipments_formatted($order->get_id());
 	if ( !$shipment_data ) return;
 
 	foreach( $shipment_data as $v ) {
@@ -385,7 +377,7 @@ function rz_add_tracking_to_my_account_orders_table( $order ) {
 add_action('woocommerce_view_order', 'rz_add_tracking_to_my_account_order_view');
 function rz_add_tracking_to_my_account_order_view( $order_id ) {
 
-	$shipment_data = rz_get_post_metashipments_formatted($order_id, '<a target="_blank" href="%s">%s</a>', '%s');
+	$shipment_data = rz_get_post_metashipments_formatted($order_id, '%s');
 	if ( !$shipment_data ) return;
 
 	// Check if template file exists in theme folder, if not, use plugin default template file
@@ -412,7 +404,7 @@ function rz_add_tracking_to_my_account_order_view( $order_id ) {
 /**
  * MY FUNCTIONS
  */
-function rz_get_post_metashipments_formatted($order_id, $link_tpl = '<a href="%s">%s</a>', $date_tpl = 'on %s', $date_format = 'M j, Y') {
+function rz_get_post_metashipments_formatted($order_id, $date_tpl = 'on %s', $date_format = 'M j, Y') {
 	
 	$shipment_data = get_post_meta($order_id, RZ_META_KEY_ITEM, true);
 	
@@ -420,57 +412,66 @@ function rz_get_post_metashipments_formatted($order_id, $link_tpl = '<a href="%s
 	if ( empty($shipment_data) ) return false;
 
 	foreach( $shipment_data as $k=>$v ) {
-
-		// Check array format if not main return empty array
-		if( !isset($v['tracking_provider']) || !isset($v['tracking_number']) || !isset($v['tracking_link']) || !isset($v['date_shipped']) ) return array();
-
-		if( $v['tracking_link'] != '' ) {
-			// Put tracking number in link
-			$v['tracking_link'] = sprintf( $v['tracking_link'], $v['tracking_number'] );
-			$v['tracking_number_linked'] = sprintf( $link_tpl, $v['tracking_link'], $v['tracking_number'] );
-		} else {
-			$v['tracking_number_linked'] = $v['tracking_number'];
-		}
-
-		if( $v['date_shipped'] != '' ) {
-			$v['date_shipped_formatted'] = sprintf( $date_tpl, date_format( date_create($v['date_shipped']), $date_format) );
-		} else {
-			$v['date_shipped_formatted'] = $v['date_shipped'];
-		}
-
-		$shipment_data[$k] = $v;
+		$shipment_data[$k] = rz_format_data($v, $date_tpl, $date_format);
 	}
 
 	return $shipment_data;
 }
 
-// Print shipment items
-function rz_print_shipment_list($shipment_data, $editable, $order) {
-	$nonce = wp_create_nonce( 'rz_nonce_delete' );
-	
-	// if order status was not shipped or processing show note message
-	if( !$order->has_status(array('shipped', 'processing')) )
-		echo "<p><i>To update shipment tracking, order status should be 'Processing' or 'Shipped'.</i></p>";
+function rz_format_data($data, $date_tpl = 'on %s', $date_format = 'M j, Y') {
 
-	if( empty($shipment_data) ){
-		echo "<p><b>No shipment tracking data found.</b></p>";
+	// Check array format if not main return empty array
+	if( !isset($data['tracking_provider']) || !isset($data['tracking_number']) || !isset($data['tracking_link']) || !isset($data['date_shipped']) )
+		return array();
 
+	if( $data['tracking_link'] != '' ) {
+		// Put tracking number in link
+		$data['tracking_link'] = sprintf( $data['tracking_link'], $data['tracking_number'] );
+		$data['tracking_number_linked'] = sprintf( '<a target="_blank" href="%s">%s</a>', $data['tracking_link'], $data['tracking_number'] );
 	} else {
-?><ul class="order_notes">
-	<?php foreach( $shipment_data as &$sh ): ?>
+		$data['tracking_number_linked'] = $data['tracking_number'];
+	}
+
+	if( $data['date_shipped'] != '' ) {
+		$data['date_shipped_formatted'] = sprintf( $date_tpl, date_format( date_create($data['date_shipped']), $date_format) );
+	} else {
+		$data['date_shipped_formatted'] = $data['date_shipped'];
+	}
+
+	return $data;
+}
+
+// Print shipment items
+function rz_print_shipment_list($shipment_data, $order) {
+	$nonce = wp_create_nonce( 'rz_nonce_delete' );
+
+	// if order status was not shipped or processing show note message
+	$message = '';
+	if( !$order->has_status(array('shipped', 'processing')) )
+		$message = "<i>To update shipment tracking, order status should be 'Processing' or 'Shipped'.</i>";
+
+	if( !$message && empty($shipment_data) )
+		$message = "<b>No shipment tracking data found.</b>";
+
+?>
+<ul
+	data-nonce="<?php echo $nonce; ?>"
+	data-order_id="<?php echo $order->ID; ?>"
+	data-admin-ajax="<?php echo admin_url('admin-ajax.php'); ?>"
+	class="order_notes">
+
+	<?php if( $message != '' ) echo $message; ?>
+
+	<?php if($message == '') foreach( $shipment_data as &$sh ): ?>
 	<li class="note">
 		<div class="note_content">
 			<p><b><?php echo $sh['tracking_provider']; ?></b> <?php echo $sh['tracking_number_linked']; ?></p>
 		</div>
 		<p class="meta">
 			Shipped on <time class="exact-date" datetime="<?php echo $sh['date_shipped']; ?>"><?php echo ( $sh['date_shipped_formatted'] ? $sh['date_shipped_formatted'] : 'no date' ) ?></time>
-			<?php if($editable):?>
-				<a href="<?php echo admin_url('admin-ajax.php'); ?>"
-					data-nonce="<?php echo $nonce; ?>"
-					data-order_id="<?php echo $order->ID; ?>"
-					data-tracking_id="<?php echo $sh['id']; ?>"
-					class="rz_delete_meta" role="button">Delete</a>
-			<?php endif; ?>
+			<a href="#"
+				data-tracking_id="<?php echo $sh['id']; ?>"
+				class="rz_delete_meta" role="button">Delete</a>
 		</p>
 	</li>
 	<?php endforeach; ?>
@@ -481,10 +482,11 @@ jQuery(document).ready( function() {
 jQuery(".rz_delete_meta").click( function(e) {
 	e.preventDefault(); 
 
-	let url = jQuery(this).attr("href");
+	let nonce = jQuery('#rz-sst-content .order_notes').attr("data-nonce");
+	let order_id = jQuery('#rz-sst-content .order_notes').attr("data-order_id");
+	let url = jQuery('#rz-sst-content .order_notes').attr("data-admin-ajax");
+
 	let metaElement = jQuery(this).parent().parent();
-	let nonce = jQuery(this).attr("data-nonce")
-	let order_id = jQuery(this).attr("data-order_id")
 	let tracking_id = jQuery(this).attr("data-tracking_id")
 
 	metaElement.css('position', 'relative').append('<div class="blockUI blockOverlay" style="z-index:1000; border:none; margin:0px; padding:0px; width:100%; height:100%; top:0px; left:0px; background:#fff; opacity:0.6; cursor:wait; position:absolute"></div>');
@@ -506,7 +508,7 @@ jQuery(".rz_delete_meta").click( function(e) {
 
 })
 </script><?php
-	}
+
 }
 
 // Print metabox form
@@ -597,10 +599,22 @@ jQuery(".rz_add_meta").click( function(e) {
 			date_shipped : jQuery('input[name="date_shipped"]').val()
 		},
 		success: function(response) {
-			if(response == "1"){
-				location.reload();
-				// TODO: append new tracking to the list and reset the form
-				// What's the point of using ajax if we're reloading the page?
+			if( response && response.id != '' ){
+				if( jQuery('#rz-sst-content .order_notes li').length == 0 )
+					jQuery('#rz-sst-content .order_notes *').remove();
+				
+				// FIXME: Delete action not working
+				jQuery('#rz-sst-content .order_notes').append('<li class="note"><div class="note_content">'
+					+'<p><b>'+response.tracking_provider+'</b> '+response.tracking_number_linked+'</p></div>'
+					+'<p class="meta">Shipped on <time class="exact-date">'+response.date_shipped_formatted+'</time>'
+					+'<a href="#" data-tracking_id="'+response.id+'" class="rz_delete_meta" role="button">Delete</a></p></li>');
+
+				// FIXME: Reset form need checked
+				jQuery('input[name="providers_list"]').val('none').change();
+				jQuery('input[name="tracking_provider"]').val('');
+				jQuery('input[name="tracking_number"]').val('');
+				jQuery('input[name="tracking_link"]').val('');
+				jQuery('input[name="date_shipped"]').val('');
 			}
 		},
 		complete: function() {
