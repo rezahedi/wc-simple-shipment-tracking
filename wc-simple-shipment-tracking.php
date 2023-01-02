@@ -190,6 +190,10 @@ function rz_meta_add() {
 
 	check_ajax_referer( 'rz_nonce_add', 'nonce' );
 
+	// check posted data is not empty
+	if( empty($_POST['tracking_provider']) && empty($_POST['tracking_number']) )
+		return;
+
 	$order_id    = isset( $_POST['order_id'] ) ? wc_clean( $_POST['order_id'] ) : '';
 
 	if( !$order_id ) return;
@@ -204,31 +208,17 @@ function rz_meta_add() {
 	if ( !current_user_can( $post_type->cap->edit_post, $order_id ) )
 		return;
 
-
-
-
-
-
-
-
-
-		
-	// TODO: metadata box should work by ajax when submitted
-	// check posted data is not empty
-	if( empty($_POST['tracking_provider']) && empty($_POST['tracking_number']) )
-		return $post_id;
-	
 	/* Get the posted data and sanitize it for use as an HTML class. */
 	$new_meta_value = Array(
-		'id' => 						$post_id . uniqid(),
+		'id' => 						$order_id . uniqid(),
 		'tracking_provider' =>	( isset( $_POST['tracking_provider'] ) ? sanitize_text_field( $_POST['tracking_provider'] ) : '' ),
 		'tracking_number' =>		( isset( $_POST['tracking_number'] ) ? sanitize_text_field( $_POST['tracking_number'] ) : '' ),
 		'tracking_link' =>		( isset( $_POST['tracking_link'] ) ? sanitize_url( $_POST['tracking_link'] ) : '' ),
 		'date_shipped' =>			( isset( $_POST['date_shipped'] ) ? sanitize_text_field( $_POST['date_shipped'] ) : '' )
 	);
 
-	$data = get_post_meta( $post_id, RZ_META_KEY_ITEM, true);
-	if($data) {
+	$data = get_post_meta( $order_id, RZ_META_KEY_ITEM, true);
+	if( $data ) {
 		$data[] = $new_meta_value;
 		$shipment_data = $data;
 	} else {
@@ -236,7 +226,20 @@ function rz_meta_add() {
 	}
 
 	// Update the meta field.
-	update_post_meta( $post_id, RZ_META_KEY_ITEM, $shipment_data );
+	update_post_meta( $order_id, RZ_META_KEY_ITEM, $shipment_data );
+
+			
+	/* translators: %s: Reaplce with tracking provider, %s: Reaplce with tracking number */
+	$note = sprintf(
+		__( 'Tracking info added for tracking provider %s with tracking number %s', 'wc-simple-shipment-tracking' ),
+		$new_meta_value['tracking_provider'], $new_meta_value['tracking_number']
+	);
+	
+	// Add the note
+	$order->add_order_note( $note );
+
+	echo '1';
+	die();
 }
 /* Delete the metadata ajax */
 function rz_meta_delete() {
@@ -261,7 +264,7 @@ function rz_meta_delete() {
 			
 			/* translators: %s: Reaplce with tracking provider, %s: Reaplce with tracking number */
 			$note = sprintf(
-				__( 'Tracking info was deleted for tracking provider %s with tracking number %s', 'woo-advanced-shipment-tracking' ),
+				__( 'Tracking info was deleted for tracking provider %s with tracking number %s', 'wc-simple-shipment-tracking' ),
 				$v['tracking_provider'], $v['tracking_number']
 			);
 			
@@ -597,6 +600,7 @@ jQuery(".rz_add_meta").click( function(e) {
 			if(response == "1"){
 				location.reload();
 				// TODO: append new tracking to the list and reset the form
+				// What's the point of using ajax if we're reloading the page?
 			}
 		},
 		complete: function() {
