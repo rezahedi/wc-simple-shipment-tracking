@@ -15,6 +15,7 @@
 
 
 // TODO: Review source codes: https://wordpress.org/plugins/woo-advanced-shipment-tracking/
+// TODO: Combine all js scripts in one file.
 
 // Plugin meta keys
 define( 'RZ_META_KEY_ITEM', '_wc_simple_shipment_tracking_items' );
@@ -164,7 +165,7 @@ function rz_order_tracking_metabox_post( $post ) {
 	// Get order metadata
 	$shipment_data = rz_get_post_metashipments_formatted($post->ID, '%s', 'F j, Y');
 
-	echo "<div id='rz-sst-content'>";
+	echo "<div class='rz-sst-content'>";
 
 	rz_print_shipment_list( $shipment_data, $order );
 
@@ -479,12 +480,12 @@ function rz_print_shipment_list($shipment_data, $order) {
 <script>
 jQuery(document).ready( function() {
 
-jQuery(".rz_delete_meta").click( function(e) {
-	e.preventDefault(); 
+jQuery(".rz-sst-content").on('click', '.rz_delete_meta', function(e) {
+	e.preventDefault();
 
-	let nonce = jQuery('#rz-sst-content .order_notes').attr("data-nonce");
-	let order_id = jQuery('#rz-sst-content .order_notes').attr("data-order_id");
-	let url = jQuery('#rz-sst-content .order_notes').attr("data-admin-ajax");
+	let nonce = jQuery('.rz-sst-content .order_notes').attr("data-nonce");
+	let order_id = jQuery('.rz-sst-content .order_notes').attr("data-order_id");
+	let url = jQuery('.rz-sst-content .order_notes').attr("data-admin-ajax");
 
 	let metaElement = jQuery(this).parent().parent();
 	let tracking_id = jQuery(this).attr("data-tracking_id")
@@ -497,7 +498,7 @@ jQuery(".rz_delete_meta").click( function(e) {
 		data : {action: "rz_simple_shipment_tracking_delete", nonce: nonce, order_id : order_id, tracking_id: tracking_id},
 		success: function(response) {
 			if(response == "1")
-				metaElement.hide('fast', function(){ $(this).remove() });
+				metaElement.hide('fast', function(){ this.remove() });
 		},
 		complete: function() {
 			metaElement.find('.blockUI').remove();
@@ -532,16 +533,16 @@ function rz_print_shipment_metabox ($shipment_email_sent, $order_id) {
 		jQuery(document).ready(function($){
 			$('select[name="providers_list"]').change(function(){
 				if( $(this).val() == 'custom' ) {
-					$('input[name="tracking_provider"]').val( '' );
-					$('input[name="tracking_link"]').val( '' );
+					$('.rz-sst-content input[name="tracking_provider"]').val('');
+					$('.rz-sst-content input[name="tracking_link"]').val('');
 
 					$('.customShow').css({'visibility': 'visible', 'height': 'auto', 'margin': '1rem 0', 'float': 'none'})
 
 				} else {
 					$('.customShow').css({'visibility': 'hidden', 'height': 0, 'margin': 0, 'float': 'left'})
 
-					$('input[name="tracking_provider"]').val( $(this).find(':selected').text() );
-					$('input[name="tracking_link"]').val( $(this).val() );
+					$('.rz-sst-content input[name="tracking_provider"]').val( $(this).find(':selected').text() );
+					$('.rz-sst-content input[name="tracking_link"]').val( $(this).val() );
 				}
 			});
 		});
@@ -593,28 +594,27 @@ jQuery(".rz_add_meta").click( function(e) {
 			action: "rz_simple_shipment_tracking_add",
 			nonce: nonce,
 			order_id : order_id,
-			tracking_provider : jQuery('input[name="tracking_provider"]').val(),
-			tracking_number : jQuery('input[name="tracking_number"]').val(),
-			tracking_link : jQuery('input[name="tracking_link"]').val(),
-			date_shipped : jQuery('input[name="date_shipped"]').val()
+			tracking_provider : jQuery('.rz-sst-content input[name="tracking_provider"]').val(),
+			tracking_number : jQuery('.rz-sst-content input[name="tracking_number"]').val(),
+			tracking_link : jQuery('.rz-sst-content input[name="tracking_link"]').val(),
+			date_shipped : jQuery('.rz-sst-content input[name="date_shipped"]').val()
 		},
 		success: function(response) {
 			if( response && response.id != '' ){
-				if( jQuery('#rz-sst-content .order_notes li').length == 0 )
-					jQuery('#rz-sst-content .order_notes *').remove();
+				if( jQuery('.rz-sst-content .order_notes li').length == 0 )
+					jQuery('.rz-sst-content .order_notes *').remove();
 				
 				// FIXME: Delete action not working
-				jQuery('#rz-sst-content .order_notes').append('<li class="note"><div class="note_content">'
+				jQuery('.rz-sst-content .order_notes').append('<li class="note"><div class="note_content">'
 					+'<p><b>'+response.tracking_provider+'</b> '+response.tracking_number_linked+'</p></div>'
 					+'<p class="meta">Shipped on <time class="exact-date">'+response.date_shipped_formatted+'</time>'
-					+'<a href="#" data-tracking_id="'+response.id+'" class="rz_delete_meta" role="button">Delete</a></p></li>');
+					+' <a href="#" data-tracking_id="'+response.id+'" class="rz_delete_meta" role="button">Delete</a></p></li>');
 
 				// FIXME: Reset form need checked
-				jQuery('input[name="providers_list"]').val('none').change();
-				jQuery('input[name="tracking_provider"]').val('');
-				jQuery('input[name="tracking_number"]').val('');
-				jQuery('input[name="tracking_link"]').val('');
-				jQuery('input[name="date_shipped"]').val('');
+				jQuery('.rz-sst-content input[name="tracking_provider"]').val('');
+				jQuery('.rz-sst-content input[name="tracking_number"]').val('');
+				jQuery('.rz-sst-content input[name="tracking_link"]').val('');
+				jQuery('.rz-sst-content input[name="date_shipped"]').val('');
 			}
 		},
 		complete: function() {
