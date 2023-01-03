@@ -15,7 +15,6 @@
 
 
 // TODO: Review source codes: https://wordpress.org/plugins/woo-advanced-shipment-tracking/
-// TODO: Combine all js scripts in one file.
 
 // Plugin meta keys
 define( 'RZ_META_KEY_ITEM', '_wc_simple_shipment_tracking_items' );
@@ -89,41 +88,6 @@ function custom_dropdown_bulk_actions_shop_order( $actions ) {
     return $actions;
 }
 
-
-// Create Callback Function if Order Status is Marked as Shipped
-
-/*
-// Add callback if Shipped action called
-// The following function written on the ‘woocommerce_order_action_massimo_shipped’ hook will be called when ‘Shipped’ has been selected from the order actions drop-down list
-add_action( 'woocommerce_order_action_wc-shipped', 'rz_order_shipped_callback');
-function rz_order_shipped_callback($order)
-{
-	error_log(__METHOD__);
-	$order->update_status('wc-shipped', 'Order status changed by "Order Actions".');
-	
-	// This function used for when we sent a shipped email before, but need to send the shipped email again.
-	// So when this function selected from Order Actions dropdown we update the order status to shipped and send the email in anyway (if status updated and email sent before)
-
-	//Here order object is sent as parameter
-	//Add code for processing here
-}
-
-//Add callback if Status changed to Shipping
-add_action('woocommerce_order_status_wc-shipped', 'rz_wwww_order_status_shipped_callback');
-function rz_wwww_order_status_shipped_callback($order_id)
-{
-	error_log(__METHOD__);
-
-	//Here order id is sent as parameter
-	//Add code for processing here
-}
-*/
-
-
-// Shipment Tracking Metabox
-/* Fire our meta box setup function on the post editor screen. */
-// TODO: IF order status is processing then show tracking metabox, wrap the three following lines in a if statement.
-// add_action('woocommerce_order_status_on-hold', 'rz_add_actions_metabox', 10, 1);
 
 // Add metabox setup action to init
 add_action('init', 'rz_metabox_setup');
@@ -461,7 +425,7 @@ function rz_print_shipment_list($shipment_data, $order) {
 	data-admin-ajax="<?php echo admin_url('admin-ajax.php'); ?>"
 	class="order_notes">
 
-	<?php if( $message != '' ) echo $message; ?>
+	<?php echo $message; ?>
 
 	<?php if($message == '') foreach( $shipment_data as &$sh ): ?>
 	<li class="note">
@@ -476,39 +440,9 @@ function rz_print_shipment_list($shipment_data, $order) {
 		</p>
 	</li>
 	<?php endforeach; ?>
+
 </ul>
-<script>
-jQuery(document).ready( function() {
-
-jQuery(".rz-sst-content").on('click', '.rz_delete_meta', function(e) {
-	e.preventDefault();
-
-	let nonce = jQuery('.rz-sst-content .order_notes').attr("data-nonce");
-	let order_id = jQuery('.rz-sst-content .order_notes').attr("data-order_id");
-	let url = jQuery('.rz-sst-content .order_notes').attr("data-admin-ajax");
-
-	let metaElement = jQuery(this).parent().parent();
-	let tracking_id = jQuery(this).attr("data-tracking_id")
-
-	metaElement.css('position', 'relative').append('<div class="blockUI blockOverlay" style="z-index:1000; border:none; margin:0px; padding:0px; width:100%; height:100%; top:0px; left:0px; background:#fff; opacity:0.6; cursor:wait; position:absolute"></div>');
-	jQuery.ajax({
-		type : "post",
-		dataType : "json",
-		url : url,
-		data : {action: "rz_simple_shipment_tracking_delete", nonce: nonce, order_id : order_id, tracking_id: tracking_id},
-		success: function(response) {
-			if(response == "1")
-				metaElement.hide('fast', function(){ this.remove() });
-		},
-		complete: function() {
-			metaElement.find('.blockUI').remove();
-		}
-	})   
-
-})
-
-})
-</script><?php
+<?php
 
 }
 
@@ -529,24 +463,6 @@ function rz_print_shipment_metabox ($shipment_email_sent, $order_id) {
 		<?php endforeach; ?>
 		<option value="custom">Custom Provider</option>
 	</select></p>
-	<script>
-		jQuery(document).ready(function($){
-			$('select[name="providers_list"]').change(function(){
-				if( $(this).val() == 'custom' ) {
-					$('.rz-sst-content input[name="tracking_provider"]').val('');
-					$('.rz-sst-content input[name="tracking_link"]').val('');
-
-					$('.customShow').css({'visibility': 'visible', 'height': 'auto', 'margin': '1rem 0', 'float': 'none'})
-
-				} else {
-					$('.customShow').css({'visibility': 'hidden', 'height': 0, 'margin': 0, 'float': 'left'})
-
-					$('.rz-sst-content input[name="tracking_provider"]').val( $(this).find(':selected').text() );
-					$('.rz-sst-content input[name="tracking_link"]').val( $(this).val() );
-				}
-			});
-		});
-	</script>
 	<?php endif; ?>
 	<p class="customShow" <?php if($providers_list): ?>style="visibility:hidden;height:0;margin:0;float:left"<?php endif; ?>>
 		<label for="tracking_provider"><?php _e( "Provider Name <sup>*</sup>:", 'wc-simple-shipment-tracking' ); ?></label>
@@ -577,6 +493,50 @@ function rz_print_shipment_metabox ($shipment_email_sent, $order_id) {
 <script>
 jQuery(document).ready( function() {
 
+// Providers list change event
+jQuery('.rz-sst-content select[name="providers_list"]').change(function(){
+	if( jQuery(this).val() == 'custom' ) {
+		jQuery('.rz-sst-content input[name="tracking_provider"]').val('');
+		jQuery('.rz-sst-content input[name="tracking_link"]').val('');
+
+		jQuery('.customShow').css({'visibility': 'visible', 'height': 'auto', 'margin': '1rem 0', 'float': 'none'})
+
+	} else {
+		jQuery('.customShow').css({'visibility': 'hidden', 'height': 0, 'margin': 0, 'float': 'left'})
+
+		jQuery('.rz-sst-content input[name="tracking_provider"]').val( jQuery(this).find(':selected').text() );
+		jQuery('.rz-sst-content input[name="tracking_link"]').val( jQuery(this).val() );
+	}
+});
+
+// Delete shipment tracking event
+jQuery(".rz-sst-content").on('click', '.rz_delete_meta', function(e) {
+	e.preventDefault();
+
+	let nonce = jQuery('.rz-sst-content .order_notes').attr("data-nonce");
+	let order_id = jQuery('.rz-sst-content .order_notes').attr("data-order_id");
+	let url = jQuery('.rz-sst-content .order_notes').attr("data-admin-ajax");
+
+	let metaElement = jQuery(this).parent().parent();
+	let tracking_id = jQuery(this).attr("data-tracking_id")
+
+	metaElement.css('position', 'relative').append('<div class="blockUI blockOverlay" style="z-index:1000; border:none; margin:0px; padding:0px; width:100%; height:100%; top:0px; left:0px; background:#fff; opacity:0.6; cursor:wait; position:absolute"></div>');
+	jQuery.ajax({
+		type : "post",
+		dataType : "json",
+		url : url,
+		data : {action: "rz_simple_shipment_tracking_delete", nonce: nonce, order_id : order_id, tracking_id: tracking_id},
+		success: function(response) {
+			if(response == "1")
+				metaElement.hide('fast', function(){ this.remove() });
+		},
+		complete: function() {
+			metaElement.find('.blockUI').remove();
+		}
+	})
+})
+
+// Add shipment tracking event
 jQuery(".rz_add_meta").click( function(e) {
 	e.preventDefault();
 
@@ -585,7 +545,9 @@ jQuery(".rz_add_meta").click( function(e) {
 	let nonce = jQuery(this).attr("data-nonce")
 	let order_id = jQuery(this).attr("data-order_id")
 
+	// Loading overlay element for ajax request
 	metaElement.css('position', 'relative').append('<div class="blockUI blockOverlay" style="z-index:1000; border:none; margin:0px; padding:0px; width:100%; height:100%; top:0px; left:0px; background:#fff; opacity:0.6; cursor:wait; position:absolute"></div>');
+
 	jQuery.ajax({
 		type : "post",
 		dataType : "json",
@@ -601,16 +563,17 @@ jQuery(".rz_add_meta").click( function(e) {
 		},
 		success: function(response) {
 			if( response && response.id != '' ){
+				// Remove message if exists
 				if( jQuery('.rz-sst-content .order_notes li').length == 0 )
 					jQuery('.rz-sst-content .order_notes *').remove();
 				
-				// FIXME: Delete action not working
+				// Add new shipment tracking
 				jQuery('.rz-sst-content .order_notes').append('<li class="note"><div class="note_content">'
 					+'<p><b>'+response.tracking_provider+'</b> '+response.tracking_number_linked+'</p></div>'
 					+'<p class="meta">Shipped on <time class="exact-date">'+response.date_shipped_formatted+'</time>'
 					+' <a href="#" data-tracking_id="'+response.id+'" class="rz_delete_meta" role="button">Delete</a></p></li>');
 
-				// FIXME: Reset form need checked
+				// Clear inputs
 				jQuery('.rz-sst-content input[name="tracking_provider"]').val('');
 				jQuery('.rz-sst-content input[name="tracking_number"]').val('');
 				jQuery('.rz-sst-content input[name="tracking_link"]').val('');
@@ -620,8 +583,7 @@ jQuery(".rz_add_meta").click( function(e) {
 		complete: function() {
 			metaElement.find('.blockUI').remove();
 		}
-	})   
-
+	})
 })
 
 })
