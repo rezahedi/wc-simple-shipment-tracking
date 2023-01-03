@@ -4,17 +4,19 @@
  * Plugin Name: Simple Shipment Tracking for WooCommerce
  * Plugin URI: https://rezahedi.com/projects/wp-woocommerce-simple-shipment-tracking
  * Description: Add shipment tracking information to your WooCommerce orders and provide customers with an easy way to track their orders. Shipment tracking Info will appear in customers accounts (in the order panel) and in WooCommerce order shipped email. 
- * Version: 0.1
+ * Version: 1.0.0
  * Author: Reza Zahedi
  * Author URI: https://rezahedi.dev
- * License: GPL-2.0+
- * License URI: 
  * Text Domain: wc-simple-shipment-tracking 
- * WC tested up to: 6.8.0
+ *
+ * WC requires at least: 6.0
+ * WC tested up to: 7.2.0
+ *
+ * License: GNU General Public License v3.0
+ * License URI: https://www.gnu.org/licenses/gpl-3.0.html
+ * 
 */
 
-
-// TODO: Review source codes: https://wordpress.org/plugins/woo-advanced-shipment-tracking/
 
 // Plugin meta keys
 define( 'RZ_META_KEY_ITEM', '_wc_simple_shipment_tracking_items' );
