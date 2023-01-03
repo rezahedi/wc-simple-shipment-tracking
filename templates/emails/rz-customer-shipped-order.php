@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // get shipment tracking data from order metadata and format it for email template
-$shipment_data = get_post_meta( $order->id, '_wc_simple_shipment_tracking_items', false);
+$shipment_data = get_post_meta( $order->id, '_wc_simple_shipment_tracking_items', true);
 
 if( count($shipment_data) > 0 ) {
 
