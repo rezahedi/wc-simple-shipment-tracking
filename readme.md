@@ -24,3 +24,9 @@ All frontend-related changes can be done by copying the template files to your t
 To customize the email template or myaccount > order > tracking info template, copy the files in `plugins/PLUGIN-FOLDER/templates/` to your theme folder `YOUR-THEME/woocommerce/templates/` and edit it as you need.
 
 __Note: There are NOT any bloat assets like CSS or JS files imported in the frontend by this plugin.__
+
+## TODOs (in the future)
+
+1. Add a plugin settings page to allow users to manage the couriers list, (Add, Edit, Delete, Enable/Disable)
+2. Use the couriers icons in the frontend or backend.
+3. Make sure that the plugin is compatible with TrackShip for WooCommerce plugin.
