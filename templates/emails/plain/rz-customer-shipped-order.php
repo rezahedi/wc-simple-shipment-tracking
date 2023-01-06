@@ -36,7 +36,7 @@ echo "= " . $email_heading . " =\n\n";
 
 echo sprintf( "Good news! Your order number %s has been shipped. Your order will be delivered between 7-12 business days.\n\n", $order->get_order_number() );
 
-if( count($shipment_data) > 0 ) {
+if( $shipment_data && count($shipment_data) > 0 ) {
 	echo "Here are the tracking numbers that you can use to check the location of your packages. Please note that tracking may take up to one business day to activate.\n\n";
 
 	foreach( $shipment_data as $i => $v ) {

@@ -47,7 +47,7 @@ do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 
 <p>Good news! Your order number <?php echo $order->get_order_number(); ?> has been shipped. Your order will be delivered between 7-12 business days.</p>
 
-<?php if( count($shipment_data) > 0 ): ?>
+<?php if( $shipment_data && count($shipment_data) > 0 ): ?>
 	<p>Here are the tracking numbers that you can use to check the location of your packages. Please note that tracking may take up to one business day to activate.</p>
 	<table cellspacing="0" cellpadding="6" border="1" width="100%" style="color:#636363; border:1px solid #e5e5e5">
 		<thead>
