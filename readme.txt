@@ -1,5 +1,5 @@
 === Simple Shipment Tracking for WooCommerce ===
- 
+
 Contributors: rezawm
 Tags: WooCommerce, delivery, shipping, shipment tracking, tracking
 Requires at least: 5.3
@@ -33,9 +33,15 @@ With this plugin, you can add shipment tracking information to your orders in Wo
 1. Upload the plugin folder to your /wp-content/plugins/ folder.
 1. Go to the **Plugins** page and activate the plugin.
 
+== Frequently Asked Questions ==
+
+= Does this plugin include/import any js/css file in frontend website? =
+
+No, this plugin do not add any bloat files to your frontend website, you need to add your own styles for this plugin.
+
 = How to uninstall the plugin? =
 
-Simply deactivate and delete the plugin.
+First if you have orders with 'Shipped' status, bulk change status of orders from 'Shipped' to 'Completed' then simply deactivate and delete the plugin.
 
 == Changelog ==
 = 1.0.0 =
