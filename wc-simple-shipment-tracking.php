@@ -341,7 +341,7 @@ function rz_add_tracking_to_my_account_orders_table( $order ) {
 
 
 // Show tracking data in "My Account" > "View Order" detail page
-add_action('woocommerce_view_order', 'rz_add_tracking_to_my_account_order_view');
+add_action('woocommerce_view_order', 'rz_add_tracking_to_my_account_order_view', 1);
 function rz_add_tracking_to_my_account_order_view( $order_id ) {
 
 	$shipment_data = rz_get_post_metashipments_formatted($order_id, '%s');
